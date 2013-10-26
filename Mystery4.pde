@@ -13,25 +13,44 @@ import traer.physics.*;
 
 ParticleSystem physics;
 
+static final long maxTicks = 3000;
+static final int w = 1000;
+static final int h = 720;
+static final int tickScale = 1;
+static final boolean enableSmallParticles = true;
+
 // -- BIG -- //
 final int numOutputs = 6; // left wing, right wing, beak, eyes, top led, speaker
 final int numActions = 5; // up, down, middle, modulate, special
 
-int outputsStren[] = {1200, 1000, 100, 500, 100, 50};
+int outputsStren[] = {700, 700, 100, 500, 100, 50};
 int actionsStren[] = {500, 500, 250, 1000, 2000};
 
 Particle pOutputs[] = new Particle[numOutputs];
 Particle pActions[] = new Particle[numActions];
 
+boolean randomCoords = false;
+int outputCoords[][] = { {100, 100},
+                         {w-100, 100},
+                         {100, h-100},
+                         {w-100, h-100},
+                         {(w/2)-200, (h/2)},
+                         {(w/2)+200, (h/2)} };
+                         
+int actionCoords[][] = { {200, 200},
+                         {w-200, 200},
+                         {200, h-200},
+                         {w-200, h-200},
+                         {w/2, h/2} };
 
 // -- SMALL -- //
 final int numFlies = 20;
 final int numFrogs = 6;
 final int numBats = 3;
 
-int fliesStren = 1000;
-int frogsStren = 1500;
-int batsStren = 2000;
+int fliesStren = 500;
+int frogsStren = 150;
+int batsStren = 200;
 
 Particle pFlies[] = new Particle[numFlies];
 Particle pFrogs[] = new Particle[numFrogs];
@@ -52,13 +71,22 @@ int lastDispChange = 0;
 int lastProxRecord = 0;
 int lastProxFind = 0;
 
+float addingVel = 5.0;
+float proximityThresh = 100.0;
+float dispDeltaThresh = 10.0;
+
+// -- DATALOGGING -- //
+int tick = 0;
+int outputActionLog[] = new int[numOutputs];
+
 
 void setup() {
 
-  size(1000, 720);
+  size(w, h);
   smooth();
   ellipseMode(CENTER);
   noStroke();
+  frameRate(30);
   
   println("hello");
   
@@ -67,22 +95,42 @@ void setup() {
   resetParticles();
   resetEnvironment();
   
+  for(int i=0; i<numOutputs; i++) {
+    outputActionLog[i] = 0;
+  }
+  
 }
 
 
 void draw() {
-
+  
   fill(color(0, 0, 0, 100));
   rect(0, 0, width, height);
+  
+  fill(color(200,200,200,255));
+  textSize(24);
+  text(frameRate, 0, height);
+  
+  textSize(18);
+  for(int i=0; i<numOutputs; i++) {
+    String s = (i + ": " + outputActionLog[i]);
+    text(s, 100*(i+1), height);
+  }
+  
+  text(tick, width-60, height);
   
   physics.tick();
   
   drawBigParticles();
   
-  drawSmallParticles();
+  if(enableSmallParticles) drawSmallParticles();
   
   updateDisplacement();
   updateProximities();
+  
+  if(tick == maxTicks) noLoop();
+  
+  tick++;
   
 }
 
@@ -90,24 +138,22 @@ void draw() {
 
 void updateProximities() {
  
-  int mill = millis();
-  
   // first, record the proximities
-  if(mill-lastProxRecord >= 100) {
+  if(tick-lastProxRecord >= tickScale*3) {
     for(int i=0; i<numOutputs; i++) {
       for(int j=0; j<numActions; j++) {
         proximities[i][j] += sqrt( pow(abs(pOutputs[i].position().x()-pActions[j].position().x()),2) + pow(abs(pOutputs[i].position().y()-pActions[j].position().y()),2) );
       }
     }
-    lastProxRecord = mill;
+    lastProxRecord = tick;
   }
   
   // second, find the closest ones for each output
-  if(mill-lastProxFind >= 1000) {
+  if(tick-lastProxFind >= tickScale*30) {
     for(int i=0; i<numOutputs; i++) {
       for(int j=0; j<numActions; j++) {
         
-        proximities[i][j] /= 100;
+        proximities[i][j] /= 10;
         
         if(proximities[i][j] < proximities[i][closestAction[i]]) {
           closestAction[i] = j;
@@ -119,10 +165,11 @@ void updateProximities() {
     for(int i=0; i<numOutputs; i++) {
       //println(i +": closest action: " + closestAction[i] + " " + proximities[i][closestAction[i]]);
       
-      if(proximities[i][closestAction[i]] > 25.0) {
+      if(proximities[i][closestAction[i]] > proximityThresh) {
         closestAction[i] = 99;
       } else {
         println("output: " + i + " action: " + closestAction[i]);
+        outputActionLog[i]++;
         sendAction(i, closestAction[i]);
       }
     }
@@ -135,7 +182,8 @@ void updateProximities() {
       }
     }
    
-   lastProxFind = mill;
+   println("---");
+   lastProxFind = tick;
     
   }
   
@@ -145,37 +193,34 @@ void updateProximities() {
 
 void updateDisplacement() {
  
-  int mill = millis();
-  float addingVel = 10.0;
-  
   // first, record the displacements
-  if(mill-lastDispRecord >= 100) {
+  if(tick-lastDispRecord >= tickScale*3) {
     for(int i=0; i<numOutputs; i++) {
       dispX[i] += pOutputs[i].position().x()-(width/2);
       dispY[i] += pOutputs[i].position().y()-(height/2);
     }
-    lastDispRecord = mill;
+    lastDispRecord = tick;
   }
   
   // second, update the total
-  if(mill-lastDispUpdate >= 1000) {
+  if(tick-lastDispUpdate >= tickScale*30) {
     for(int i=0; i<numOutputs; i++) {
       dispTotal[i] = sqrt( (pow(dispX[i], 2) + pow(dispY[i], 2)) );
       dispX[i] = 0;
       dispY[i] = 0;
     }
-    lastDispUpdate = mill;
+    lastDispUpdate = tick;
   }
   
   // third, change the environment
-  if(mill-lastDispChange >= 1000) {
+  if(tick-lastDispChange >= tickScale*30) {
     for(int i=0; i<numOutputs; i++) {
       for(int j=i+1; j<numOutputs; j++) {
         
         float delta = abs(dispTotal[i]-dispTotal[j]);
         //println(i + ": delta: " + delta);
         
-        if(delta < 10.0) {
+        if(delta < dispDeltaThresh) {
           println("changing velocity: " + i + " & " + j); 
           pOutputs[i].velocity().add(-1*addingVel, -1*addingVel, 0);
           pOutputs[j].velocity().add(addingVel, addingVel, 0);
@@ -183,7 +228,7 @@ void updateDisplacement() {
         
       }
     }
-    lastDispChange = mill; 
+    lastDispChange = tick; 
   }
   
 }
@@ -191,7 +236,7 @@ void updateDisplacement() {
 
 
 void drawSmallParticles() {
-
+  
   // flies
   fill(color(96,39,73,255)); // purpleish
   for(int i=0; i<numFlies; i++) {
@@ -275,9 +320,19 @@ void drawBigParticles() {
 
 void resetParticles() {
  
+  float xPos = 0;
+  float yPos = 0;
+  
   // outputs
   for(int i=0; i<numOutputs; i++) {
-    pOutputs[i] = physics.makeParticle(1.0, random(0, width), random(0, height), 0);
+    if(randomCoords) {
+      xPos = random(0, width);
+      yPos = random(0, height);
+    } else {
+      xPos = (float)outputCoords[i][0];
+      yPos = (float)outputCoords[i][1];
+    }
+    pOutputs[i] = physics.makeParticle(1.0, xPos, yPos, 0);
   }
   
   for(int i=0; i<numOutputs; i++) {
@@ -288,7 +343,14 @@ void resetParticles() {
   
   // actions
   for(int i=0; i<numActions; i++) {
-    pActions[i] = physics.makeParticle(1.0, random(0, width), random(0, height), 0);
+    if(randomCoords) {
+      xPos = random(0, width);
+      yPos = random(0, height);
+    } else {
+      xPos = (float)actionCoords[i][0];
+      yPos = (float)actionCoords[i][1];
+    }
+    pActions[i] = physics.makeParticle(1.0, xPos, yPos, 0);
   }
   
   for(int i=0; i<numActions; i++) {
@@ -296,6 +358,23 @@ void resetParticles() {
       physics.makeAttraction(pActions[i], pActions[j], actionsStren[i], 50);
     }
   }
+  
+  if(enableSmallParticles) initSmallParticles();
+  
+  // ---
+  
+  // outputs & actions
+  for(int i=0; i<numOutputs; i++) {
+    for(int j=0; j<numActions; j++) {
+      physics.makeAttraction(pOutputs[i], pActions[j], outputsStren[i], 50);
+    }
+  }
+  
+  if(enableSmallParticles) attractSmallParticles();
+  
+}
+
+void initSmallParticles() {
   
   // flies
   for(int i=0; i<numFlies; i++) {
@@ -330,54 +409,74 @@ void resetParticles() {
     }
   }
   
-  // ------
-  
-  // outputs & actions
-  for(int i=0; i<numOutputs; i++) {
-    for(int j=0; j<numActions; j++) {
-      physics.makeAttraction(pOutputs[i], pActions[j], outputsStren[i], 50);
-    }
-  }
-  
-  // outputs & flies
+}
+
+void attractSmallParticles() {
+ 
+ // outputs & flies
   for(int i=0; i<numOutputs; i++) {
     for(int j=0; j<numFlies; j++) {
-      physics.makeAttraction(pOutputs[i], pFlies[j], outputsStren[i], 50);
+      physics.makeAttraction(pOutputs[i], pFlies[j], fliesStren, 50);
     }
   }
   
   // outputs & frogs
   for(int i=0; i<numOutputs; i++) {
     for(int j=0; j<numFrogs; j++) {
-      physics.makeAttraction(pOutputs[i], pFrogs[j], outputsStren[i], 50);
+      physics.makeAttraction(pOutputs[i], pFrogs[j], frogsStren, 50);
     }
   }
   
   // outputs & bats
   for(int i=0; i<numOutputs; i++) {
     for(int j=0; j<numBats; j++) {
-      physics.makeAttraction(pOutputs[i], pBats[j], outputsStren[i], 50);
+      physics.makeAttraction(pOutputs[i], pBats[j], batsStren, 50);
     }
   }
+  
+  // ---
   
   // actions & flies
   for(int i=0; i<numActions; i++) {
     for(int j=0; j<numFlies; j++) {
-      physics.makeAttraction(pActions[i], pFlies[j], actionsStren[i], 50);
+      physics.makeAttraction(pActions[i], pFlies[j], fliesStren, 50);
     }
   }
   
   // actions & frogs
   for(int i=0; i<numActions; i++) {
     for(int j=0; j<numFrogs; j++) {
-      physics.makeAttraction(pActions[i], pFrogs[j], actionsStren[i], 50);
+      physics.makeAttraction(pActions[i], pFrogs[j], frogsStren, 50);
     }
   }
+  
+  // actions & bats
+  for(int i=0; i<numActions; i++) {
+    for(int j=0; j<numBats; j++) {
+      physics.makeAttraction(pActions[i], pBats[j], batsStren, 50);
+    }
+  }
+  
+  // ---
   
   // flies & frogs
   for(int i=0; i<numFlies; i++) {
     for(int j=0; j<numFrogs; j++) {
-      physics.makeAttraction(pFlies[i], pFrogs[j], fliesStren, 50);
+      physics.makeAttraction(pFlies[i], pFrogs[j], frogsStren, 50);
+    }
+  }
+  
+  // flies & bats
+  for(int i=0; i<numFlies; i++) {
+    for(int j=0; j<numBats; j++) {
+      physics.makeAttraction(pFlies[i], pBats[j], batsStren, 50);
+    }
+  }
+  
+  // frogs & bats
+  for(int i=0; i<numFrogs; i++) {
+    for(int j=0; j<numBats; j++) {
+      physics.makeAttraction(pFrogs[i], pBats[j], frogsStren, 50);
     }
   }
   
