@@ -13,6 +13,7 @@ import traer.physics.*;
 
 ParticleSystem physics;
 
+static final boolean stopMaxTicks = false;
 static final long maxTicks = 3000;
 static final int w = 1000;
 static final int h = 720;
@@ -79,6 +80,12 @@ float dispDeltaThresh = 10.0;
 int tick = 0;
 int outputActionLog[] = new int[numOutputs];
 
+// -- BEHAVIOURS -- //
+int runningBehaviour = 0;
+int behaviourStep = 0;
+int startBehaviour = 0;
+int nextWait = 15;
+
 
 void setup() {
 
@@ -127,13 +134,98 @@ void draw() {
   
   updateDisplacement();
   updateProximities();
+  updateBehaviour();
   
-  if(tick == maxTicks) noLoop();
+  if(stopMaxTicks == true && tick == maxTicks) noLoop();
   
   tick++;
   
 }
 
+
+void keyPressed() {
+  if(key == 'l') {
+    // want left wing to go up
+    // then want left wing to go down
+    // then want system to return to normal
+    runningBehaviour = 1;
+  } else if(key == 'r') {
+    runningBehaviour = 2;
+  }
+}
+
+
+void updateBehaviour() {
+ 
+  if(runningBehaviour == 1) {
+    
+    if(startBehaviour == 0) {
+      startBehaviour = tick;
+      println("okeedokee!");
+    }
+    
+    if( (tick-startBehaviour)%nextWait == 0 ) { // every half-second
+    
+    println("behaviour step: " + behaviourStep);
+    
+    switch(behaviourStep) {
+      case 0: {
+        for(int j=0; j<numOutputs; j++) {
+          if(j != 0) physics.makeAttraction(pOutputs[0], pOutputs[j], -5000, 100);
+        }
+        for(int j=0; j<numActions; j++) {
+          if(j != 0) physics.makeAttraction(pOutputs[0], pActions[j], -5000, 100);
+        }
+        nextWait = 15;
+      }
+      break;
+      case 1: {
+        for(int j=0; j<numActions; j++) {
+          if(j != 0) physics.makeAttraction(pActions[0], pActions[j], -5000, 100);
+        }
+        nextWait = 15;
+      }
+      break;
+      case 2: {
+        //pOutputs[0].setMass(10*pOutputs[0].mass());
+        //pActions[0].setMass(10*pActions[0].mass());
+        physics.makeAttraction(pOutputs[0], pActions[0], 100000, 100);
+        nextWait = 15*10;
+      }
+      break;
+      case 3: {
+        // reset it all
+        for(int i=0; i<numOutputs; i++) {
+          for(int j=0; j<numActions; j++) {
+            physics.makeAttraction(pOutputs[0], pActions[j], outputsStren[i], 50);
+            physics.makeAttraction(pOutputs[0], pOutputs[i], outputsStren[i], 50);
+            physics.makeAttraction(pActions[0], pActions[j], actionsStren[j], 50);
+          }
+        }
+        
+        nextWait = 15;
+      }
+      break;
+      case 4: {
+        startBehaviour = 0;
+        runningBehaviour = 99;
+        nextWait = 15;
+        behaviourStep = -1;
+      }
+      break;
+    }
+    
+    behaviourStep++;
+    
+    }
+    
+  } else if(runningBehaviour == 2) {
+    
+    
+    
+  }
+  
+}
 
 
 void updateProximities() {
