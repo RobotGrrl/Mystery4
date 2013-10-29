@@ -1,0 +1,22 @@
+300,start
+300,step: 0
+315,step: 1
+360,step: 2
+450,first
+900,step: 3
+915,step: 4
+930,step: 5
+945,step: 6
+960,step: 7
+3900,start
+3900,step: 0
+3915,step: 1
+3960,first
+3960,step: 2
+4500,step: 3
+4515,step: 4
+4530,step: 5
+4545,step: 6
+4560,step: 7
+7500,start
+7500,step: 0

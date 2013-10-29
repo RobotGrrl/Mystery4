@@ -19,6 +19,7 @@ static final int w = 1000;
 static final int h = 720;
 static final int tickScale = 1;
 static final boolean enableSmallParticles = true;
+static final boolean logging = true;
 
 // -- BIG -- //
 final int numOutputs = 6; // left wing, right wing, beak, eyes, top led, speaker
@@ -79,12 +80,20 @@ float dispDeltaThresh = 10.0;
 // -- DATALOGGING -- //
 int tick = 0;
 int outputActionLog[] = new int[numOutputs];
+PrintWriter log;
+int firstRecO0A0 = 0;
 
 // -- BEHAVIOURS -- //
 int runningBehaviour = 0;
 int behaviourStep = 0;
 int startBehaviour = 0;
 int nextWait = 15;
+
+// -- DATALOGGING TEST -- //
+int numTriggers = 0;
+int triggerLim = 10;
+int prevTrigger = 0;
+PrintWriter output;
 
 
 void setup() {
@@ -106,10 +115,32 @@ void setup() {
     outputActionLog[i] = 0;
   }
   
+  if(logging) createLogger();
+  
 }
 
 
 void draw() {
+  
+  /*
+  if(numTriggers <= triggerLim) {
+    if(prevTrigger == 0 && tick >= 30*10) {
+      println("triggered!");
+      runningBehaviour = 1;
+      prevTrigger = tick;
+      numTriggers++;
+    } else if(tick-prevTrigger >= 30*60) {
+      println("triggered!");
+      runningBehaviour = 1;
+      prevTrigger = tick;
+      numTriggers++;
+    }
+  } else {
+    println("done");
+    stopLog();
+    exit(); 
+  }
+  */
   
   fill(color(0, 0, 0, 100));
   rect(0, 0, width, height);
@@ -162,11 +193,13 @@ void updateBehaviour() {
     if(startBehaviour == 0) {
       startBehaviour = tick;
       println("okeedokee!");
+      if(logging) logItem("start");
     }
     
     if( (tick-startBehaviour)%nextWait == 0 ) { // every half-second
     
     println("behaviour step: " + behaviourStep);
+    if(logging) logItem( ("step: " + behaviourStep) );
     
     switch(behaviourStep) {
       case 0: {
@@ -183,38 +216,59 @@ void updateBehaviour() {
         for(int j=0; j<numActions; j++) {
           if(j != 0) physics.makeAttraction(pActions[0], pActions[j], -5000, 100);
         }
-        nextWait = 15;
+        nextWait = 15*4;
       }
       break;
       case 2: {
         //pOutputs[0].setMass(10*pOutputs[0].mass());
         //pActions[0].setMass(10*pActions[0].mass());
         physics.makeAttraction(pOutputs[0], pActions[0], 100000, 100);
-        nextWait = 15*10;
+        nextWait = 30*20;
       }
       break;
       case 3: {
-        // reset it all
-        for(int i=0; i<numOutputs; i++) {
-          for(int j=0; j<numActions; j++) {
-            physics.makeAttraction(pOutputs[0], pActions[j], outputsStren[i], 50);
-            physics.makeAttraction(pOutputs[0], pOutputs[i], outputsStren[i], 50);
-            physics.makeAttraction(pActions[0], pActions[j], actionsStren[j], 50);
-          }
+        for(int j=0; j<numOutputs; j++) {
+          if(j != 0) physics.makeAttraction(pOutputs[0], pOutputs[j], 5000, 100);
         }
-        
+        for(int j=0; j<numActions; j++) {
+          if(j != 0) physics.makeAttraction(pOutputs[0], pActions[j], 5000, 100);
+        }
         nextWait = 15;
       }
       break;
       case 4: {
+       for(int j=0; j<numActions; j++) {
+          if(j != 0) physics.makeAttraction(pActions[0], pActions[j], 5000, 100);
+        }
+        nextWait = 15; 
+      }
+      break;
+      case 5: {
+        physics.makeAttraction(pOutputs[0], pActions[0], -100000, 100);
+        nextWait = 15;
+      }
+      break;
+      case 6: {
+        // outputs & actions
+        for(int i=0; i<numOutputs; i++) {
+          for(int j=0; j<numActions; j++) {
+            physics.makeAttraction(pOutputs[i], pActions[j], outputsStren[i], 50);
+          }
+        }
+        nextWait = 15;
+      }
+      break;
+      case 7: {
         startBehaviour = 0;
         runningBehaviour = 99;
         nextWait = 15;
+        firstRecO0A0 = 0;
         behaviourStep = -1;
       }
       break;
     }
     
+    //delay(2000);
     behaviourStep++;
     
     }
@@ -263,6 +317,20 @@ void updateProximities() {
         println("output: " + i + " action: " + closestAction[i]);
         outputActionLog[i]++;
         sendAction(i, closestAction[i]);
+        
+        if(runningBehaviour == 1 && logging == true) {
+          if(firstRecO0A0 == 0) {
+            if(i == 0 && closestAction[i] == 0) {
+              firstRecO0A0 = tick;
+              if(logging) logItem("first");
+            }
+          } else {
+            if(i == 0 && closestAction[i] != 0) {
+              if(logging) logItem("anomalie");
+            }
+          }
+        }
+        
       }
     }
    
