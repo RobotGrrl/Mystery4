@@ -19,7 +19,7 @@ static final int w = 1000;
 static final int h = 720;
 static final int tickScale = 1;
 static final boolean enableSmallParticles = true;
-static final boolean logging = true;
+static final boolean loggingFH = true;
 
 // -- BIG -- //
 final int numOutputs = 6; // left wing, right wing, beak, eyes, top led, speaker
@@ -77,7 +77,7 @@ float addingVel = 5.0;
 float proximityThresh = 100.0;
 float dispDeltaThresh = 10.0;
 
-// -- DATALOGGING -- //
+// -- DATAloggingFH -- //
 int tick = 0;
 int outputActionLog[] = new int[numOutputs];
 PrintWriter log;
@@ -89,11 +89,13 @@ int behaviourStep = 0;
 int startBehaviour = 0;
 int nextWait = 15;
 
-// -- DATALOGGING TEST -- //
+// -- DATAloggingFH TEST -- //
 int numTriggers = 0;
 int triggerLim = 10;
 int prevTrigger = 0;
 PrintWriter output;
+int startFHTick = 0;
+int hitFHTick = 0;
 
 
 void setup() {
@@ -115,32 +117,15 @@ void setup() {
     outputActionLog[i] = 0;
   }
   
-  if(logging) createLogger();
+  if(loggingFH) createLogger();
   
 }
 
 
 void draw() {
   
-  /*
-  if(numTriggers <= triggerLim) {
-    if(prevTrigger == 0 && tick >= 30*10) {
-      println("triggered!");
-      runningBehaviour = 1;
-      prevTrigger = tick;
-      numTriggers++;
-    } else if(tick-prevTrigger >= 30*60) {
-      println("triggered!");
-      runningBehaviour = 1;
-      prevTrigger = tick;
-      numTriggers++;
-    }
-  } else {
-    println("done");
-    stopLog();
-    exit(); 
-  }
-  */
+  logFirstHitTest();
+  
   
   fill(color(0, 0, 0, 100));
   rect(0, 0, width, height);
@@ -193,40 +178,40 @@ void updateBehaviour() {
     if(startBehaviour == 0) {
       startBehaviour = tick;
       println("okeedokee!");
-      if(logging) logItem("start");
+      //if(loggingFH) logItemFH("start");
     }
     
     if( (tick-startBehaviour)%nextWait == 0 ) { // every half-second
     
     println("behaviour step: " + behaviourStep);
-    if(logging) logItem( ("step: " + behaviourStep) );
+    //if(loggingFH) logItemFH( ("step: " + behaviourStep) );
     
     switch(behaviourStep) {
-      case 0: {
+      case 0: { // repel everything from outputs
         for(int j=0; j<numOutputs; j++) {
           if(j != 0) physics.makeAttraction(pOutputs[0], pOutputs[j], -5000, 100);
         }
         for(int j=0; j<numActions; j++) {
           if(j != 0) physics.makeAttraction(pOutputs[0], pActions[j], -5000, 100);
         }
-        nextWait = 15;
+        nextWait = 5;
       }
       break;
-      case 1: {
+      case 1: { // repel action 0 from actions
         for(int j=0; j<numActions; j++) {
           if(j != 0) physics.makeAttraction(pActions[0], pActions[j], -5000, 100);
         }
-        nextWait = 15*4;
+        nextWait = 20;
       }
       break;
-      case 2: {
+      case 2: { // make attraction between O0 A0
         //pOutputs[0].setMass(10*pOutputs[0].mass());
         //pActions[0].setMass(10*pActions[0].mass());
         physics.makeAttraction(pOutputs[0], pActions[0], 100000, 100);
         nextWait = 30*20;
       }
       break;
-      case 3: {
+      case 3: { // reverse step 0 (repel everything from outputs)
         for(int j=0; j<numOutputs; j++) {
           if(j != 0) physics.makeAttraction(pOutputs[0], pOutputs[j], 5000, 100);
         }
@@ -236,19 +221,19 @@ void updateBehaviour() {
         nextWait = 15;
       }
       break;
-      case 4: {
+      case 4: { // reverse step 1 (repel action 0 from actions)
        for(int j=0; j<numActions; j++) {
           if(j != 0) physics.makeAttraction(pActions[0], pActions[j], 5000, 100);
         }
         nextWait = 15; 
       }
       break;
-      case 5: {
+      case 5: { // reverse step 2 (make attraction between O0 A0)
         physics.makeAttraction(pOutputs[0], pActions[0], -100000, 100);
         nextWait = 15;
       }
       break;
-      case 6: {
+      case 6: { // set everything back to original strength
         // outputs & actions
         for(int i=0; i<numOutputs; i++) {
           for(int j=0; j<numActions; j++) {
@@ -258,10 +243,10 @@ void updateBehaviour() {
         nextWait = 15;
       }
       break;
-      case 7: {
+      case 7: { // until next time, ;)
         startBehaviour = 0;
         runningBehaviour = 99;
-        nextWait = 15;
+        nextWait = 15+50;
         firstRecO0A0 = 0;
         behaviourStep = -1;
       }
@@ -318,15 +303,16 @@ void updateProximities() {
         outputActionLog[i]++;
         sendAction(i, closestAction[i]);
         
-        if(runningBehaviour == 1 && logging == true) {
+        if(runningBehaviour == 1 && loggingFH == true) {
           if(firstRecO0A0 == 0) {
             if(i == 0 && closestAction[i] == 0) {
               firstRecO0A0 = tick;
-              if(logging) logItem("first");
+              //if(loggingFH) logItemFH("first");
+              logItemFH((firstRecO0A0-startBehaviour), "firstRec-startBehaviour");
             }
           } else {
             if(i == 0 && closestAction[i] != 0) {
-              if(logging) logItem("anomalie");
+              logItemFH(0, "anomalie: O0 not near A0");
             }
           }
         }

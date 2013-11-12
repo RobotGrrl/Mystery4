@@ -1,0 +1,9 @@
+1,780,480,firstRec-startBehaviour
+2,1680,480,firstRec-startBehaviour
+3,2130,30,firstRec-startBehaviour
+4,3000,3000,firstRec-startBehaviour
+5,4170,270,firstRec-startBehaviour
+7,6030,330,firstRec-startBehaviour
+8,6690,90,firstRec-startBehaviour
+9,7890,390,firstRec-startBehaviour
+10,8520,120,firstRec-startBehaviour

@@ -1,0 +1,15 @@
+1,300,300,firstRec-startBehaviour
+2,1680,480,firstRec-startBehaviour
+4,3270,270,firstRec-startBehaviour
+5,4080,180,firstRec-startBehaviour
+5,4170,0,anomalie: O0 not near A0
+5,4200,0,anomalie: O0 not near A0
+5,4230,0,anomalie: O0 not near A0
+5,4260,0,anomalie: O0 not near A0
+6,4830,30,firstRec-startBehaviour
+7,6000,300,firstRec-startBehaviour
+8,6600,6600,firstRec-startBehaviour
+8,7020,0,anomalie: O0 not near A0
+8,7260,0,anomalie: O0 not near A0
+9,7590,90,firstRec-startBehaviour
+10,8520,120,firstRec-startBehaviour
